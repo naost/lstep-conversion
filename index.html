@@ -173,38 +173,146 @@
             addLog(`🚀 コンバージョンタグ発火開始 (試行${fireCount})`, 'info');
             
             try {
-                // 画像ピクセル方式
-                const img = new Image();
-                const params = new URLSearchParams({
-                    t: Date.now(),
-                    attempt: attemptId,
-                    count: fireCount,
-                    test: 'storyblok'
-                });
+                // 方法1: 画像ピクセル方式（基本）
+                fireWithImage(attemptId);
                 
-                img.src = `https://lstep.app/p/85292/JIEfWu?${params}`;
+                // 方法2: Navigator.sendBeacon方式（モダンブラウザ用）
+                setTimeout(() => fireWithBeacon(attemptId), 500);
                 
-                img.onload = function() {
-                    addLog(`✅ タグ発火成功 (試行${fireCount})`, 'success');
-                    updateStatus(`✅ 最後の発火成功: 試行${fireCount}`, true);
-                };
+                // 方法3: fetch with no-cors（CORS回避）
+                setTimeout(() => fireWithFetchNoCors(attemptId), 1000);
                 
-                img.onerror = function() {
-                    addLog(`❌ タグ発火失敗 (試行${fireCount})`, 'error');
-                    updateStatus(`❌ 最後の発火失敗: 試行${fireCount}`, false);
-                };
-                
-                img.onabort = function() {
-                    addLog(`⚠️ タグ発火中断 (試行${fireCount})`, 'warning');
-                };
-                
-                // トラッカーに追加
-                document.getElementById('tracker').appendChild(img);
-                addLog(`📡 発火リクエスト送信完了`, 'info');
+                // 方法4: 動的script要素方式
+                setTimeout(() => fireWithDynamicScript(attemptId), 1500);
                 
             } catch (error) {
                 addLog(`💥 発火エラー: ${error.message}`, 'error');
                 updateStatus('💥 エラーが発生しました', false);
+            }
+        }
+        
+        // 方法1: 画像ピクセル方式
+        function fireWithImage(attemptId) {
+            const img = new Image();
+            const params = new URLSearchParams({
+                t: Date.now(),
+                attempt: attemptId,
+                count: fireCount,
+                test: 'storyblok',
+                ua: navigator.userAgent.includes('Line') ? 'line' : 'other',
+                method: 'img'
+            });
+            
+            img.src = `https://lstep.app/p/85292/JIEfWu?${params}`;
+            
+            img.onload = function() {
+                addLog(`✅ 画像ピクセル発火成功 (試行${fireCount})`, 'success');
+                updateStatus(`✅ 最後の発火成功: 試行${fireCount}`, true);
+            };
+            
+            img.onerror = function() {
+                addLog(`❌ 画像ピクセル発火失敗 (試行${fireCount})`, 'error');
+            };
+            
+            document.getElementById('tracker').appendChild(img);
+        }
+        
+        // 方法2: Navigator.sendBeacon方式
+        function fireWithBeacon(attemptId) {
+            if (!navigator.sendBeacon) {
+                addLog('sendBeacon未対応', 'warning');
+                return;
+            }
+            
+            try {
+                const params = new URLSearchParams({
+                    t: Date.now(),
+                    attempt: attemptId,
+                    count: fireCount,
+                    method: 'beacon'
+                });
+                
+                const url = `https://lstep.app/p/85292/JIEfWu?${params}`;
+                const sent = navigator.sendBeacon(url);
+                
+                if (sent) {
+                    addLog(`📡 sendBeacon発火送信完了 (${attemptId})`, 'success');
+                } else {
+                    addLog(`❌ sendBeacon発火失敗 (${attemptId})`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`sendBeaconエラー: ${error.message}`, 'error');
+            }
+        }
+        
+        // 方法3: Fetch with no-cors
+        function fireWithFetchNoCors(attemptId) {
+            if (typeof fetch === 'undefined') {
+                addLog('Fetch API未対応', 'warning');
+                return;
+            }
+            
+            try {
+                const params = new URLSearchParams({
+                    t: Date.now(),
+                    attempt: attemptId,
+                    count: fireCount,
+                    method: 'fetch-nocors'
+                });
+                
+                const url = `https://lstep.app/p/85292/JIEfWu?${params}`;
+                
+                fetch(url, {
+                    method: 'GET',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    credentials: 'omit'
+                }).then(() => {
+                    addLog(`🌐 Fetch(no-cors)発火送信完了 (${attemptId})`, 'success');
+                }).catch(error => {
+                    addLog(`Fetch(no-cors)エラー: ${error.message}`, 'error');
+                });
+                
+            } catch (error) {
+                addLog(`Fetchエラー: ${error.message}`, 'error');
+            }
+        }
+        
+        // 方法4: 動的script要素方式
+        function fireWithDynamicScript(attemptId) {
+            try {
+                const script = document.createElement('script');
+                const params = new URLSearchParams({
+                    t: Date.now(),
+                    attempt: attemptId,
+                    count: fireCount,
+                    method: 'script',
+                    callback: 'lstepCallback' + fireCount
+                });
+                
+                // JSONP風のコールバック設定
+                window['lstepCallback' + fireCount] = function() {
+                    addLog(`📜 スクリプト発火成功 (${attemptId})`, 'success');
+                };
+                
+                script.src = `https://lstep.app/p/85292/JIEfWu?${params}`;
+                script.onerror = function() {
+                    addLog(`❌ スクリプト発火失敗 (${attemptId})`, 'error');
+                };
+                
+                document.head.appendChild(script);
+                
+                // 5秒後にクリーンアップ
+                setTimeout(() => {
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+                    delete window['lstepCallback' + fireCount];
+                }, 5000);
+                
+            } catch (error) {
+                addLog(`スクリプトエラー: ${error.message}`, 'error');
             }
         }
         
