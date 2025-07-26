@@ -135,6 +135,9 @@
             <button id="autoBtn" class="btn btn-primary">
                 🔄 自動テスト実行
             </button>
+            <button id="simulateBtn" class="btn" style="background: #6f42c1;">
+                🔗 Lステップリンク再現
+            </button>
             <button id="envBtn" class="btn">
                 🔍 環境情報更新
             </button>
@@ -269,11 +272,19 @@
         // 方法1: 画像ピクセル方式
         function fireWithImage(attemptId) {
             const img = new Image();
+            
+            // URLパラメータから必要な情報を取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const lstepUserId = urlParams.get('userid') || urlParams.get('user_id') || 'test_user';
+            const lstepToken = urlParams.get('token') || urlParams.get('t') || 'test_token';
+            
             const params = new URLSearchParams({
-                t: Date.now(),
+                userid: lstepUserId,
+                token: lstepToken,
+                timestamp: Date.now(),
                 attempt: attemptId,
                 count: fireCount,
-                test: 'storyblok',
+                test: 'conversion_test',
                 ua: currentEnvironment?.isLine ? 'line' : 'other',
                 platform: currentEnvironment?.isIOS ? 'ios' : currentEnvironment?.isAndroid ? 'android' : 'other',
                 method: 'img',
@@ -323,9 +334,20 @@
                 return;
             }
             
+            // iOS13.3以降での問題を警告
+            if (currentEnvironment?.isIOS) {
+                addLog('⚠️ iOS端末では動作しない場合があります (iOS13.3以降)', 'warning');
+            }
+            
             try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const lstepUserId = urlParams.get('userid') || urlParams.get('user_id') || 'test_user';
+                const lstepToken = urlParams.get('token') || urlParams.get('t') || 'test_token';
+                
                 const params = new URLSearchParams({
-                    t: Date.now(),
+                    userid: lstepUserId,
+                    token: lstepToken,
+                    timestamp: Date.now(),
                     attempt: attemptId,
                     count: fireCount,
                     method: 'beacon',
@@ -357,9 +379,20 @@
                 return;
             }
             
+            // iOS13.3以降での問題を警告
+            if (currentEnvironment?.isIOS) {
+                addLog('⚠️ iOS端末では動作しない場合があります (iOS13.3以降)', 'warning');
+            }
+            
             try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const lstepUserId = urlParams.get('userid') || urlParams.get('user_id') || 'test_user';
+                const lstepToken = urlParams.get('token') || urlParams.get('t') || 'test_token';
+                
                 const params = new URLSearchParams({
-                    t: Date.now(),
+                    userid: lstepUserId,
+                    token: lstepToken,
+                    timestamp: Date.now(),
                     attempt: attemptId,
                     count: fireCount,
                     method: 'fetch-nocors',
@@ -403,8 +436,14 @@
         function fireWithDynamicScript(attemptId) {
             try {
                 const script = document.createElement('script');
+                const urlParams = new URLSearchParams(window.location.search);
+                const lstepUserId = urlParams.get('userid') || urlParams.get('user_id') || 'test_user';
+                const lstepToken = urlParams.get('token') || urlParams.get('t') || 'test_token';
+                
                 const params = new URLSearchParams({
-                    t: Date.now(),
+                    userid: lstepUserId,
+                    token: lstepToken,
+                    timestamp: Date.now(),
                     attempt: attemptId,
                     count: fireCount,
                     method: 'script',
@@ -480,6 +519,33 @@
             }, 2000);
         }
         
+        // Lステップリンクを再現する関数
+        function simulateLstepLink() {
+            const simulatedParams = new URLSearchParams({
+                userid: 'test_user_' + Date.now(),
+                token: 'test_token_' + Math.random().toString(36).substr(2, 9),
+                source: 'lstep_simulation'
+            });
+            
+            const newUrl = `${window.location.pathname}?${simulatedParams}`;
+            window.history.pushState({}, '', newUrl);
+            
+            addLog('🔗 Lステップリンクパラメータを再現しました', 'info');
+            addLog(`📝 追加されたパラメータ: ${simulatedParams.toString()}`, 'info');
+            
+            // 環境情報を更新
+            displayEnvironment();
+        }
+        
+        // iOS問題の詳細説明
+        function showIOSWarning() {
+            if (currentEnvironment?.isIOS) {
+                addLog('⚠️ 重要: iOS13.3以降ではコンバージョン機能に制限があります', 'warning');
+                addLog('📱 個人情報保護強化によりCookieベースの追跡が制限されています', 'warning');
+                addLog('💡 代替手段: 流入経路分析機能の使用を推奨します', 'info');
+            }
+        }
+        
         // ログクリア
         function handleClearLog() {
             const logArea = document.getElementById('logArea');
@@ -499,15 +565,29 @@
                 currentEnvironment = detectEnvironment();
                 displayEnvironment();
                 
+                // iOS警告表示
+                showIOSWarning();
+                
+                // URLパラメータチェック
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('userid') || urlParams.has('user_id')) {
+                    addLog('✅ Lステップパラメータを検出しました', 'success');
+                } else {
+                    addLog('⚠️ Lステップパラメータが見つかりません', 'warning');
+                    addLog('💡 「Lステップリンク再現」ボタンでテスト用パラメータを追加できます', 'info');
+                }
+                
                 // ボタンイベント設定
                 const fireBtn = document.getElementById('fireBtn');
                 const autoBtn = document.getElementById('autoBtn');
                 const clearBtn = document.getElementById('clearBtn');
                 const envBtn = document.getElementById('envBtn');
+                const simulateBtn = document.getElementById('simulateBtn');
                 
                 if (fireBtn) fireBtn.onclick = handleFireClick;
                 if (autoBtn) autoBtn.onclick = handleAutoTest;
                 if (clearBtn) clearBtn.onclick = handleClearLog;
+                if (simulateBtn) simulateBtn.onclick = simulateLstepLink;
                 if (envBtn) {
                     envBtn.onclick = () => {
                         displayEnvironment();
