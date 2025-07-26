@@ -1,4 +1,43 @@
-// グローバル変数
+// 環境情報を取得・表示
+        function detectEnvironment() {
+            const env = {
+                userAgent: navigator.userAgent,
+                isLine: navigator.userAgent.includes('Line'),
+                isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+                isAndroid: /Android/.test(navigator.userAgent),
+                isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+                isChrome: /Chrome/.test(navigator.userAgent),
+                cookieEnabled: navigator.cookieEnabled,
+                language: navigator.language,
+                platform: navigator.platform,
+                referrer: document.referrer,
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            };
+            
+            return env;
+        }
+        
+        // 環境情報を表示
+        function displayEnvironment() {
+            const env = detectEnvironment();
+            const envDiv = document.getElementById('envDetails');
+            
+            envDiv.innerHTML = `
+                <div><strong>🌐 ブラウザ:</strong> ${env.isLine ? 'LINE内蔵ブラウザ' : 'その他ブラウザ'}</div>
+                <div><strong>📱 プラットフォーム:</strong> ${env.isIOS ? 'iOS' : env.isAndroid ? 'Android' : 'その他'}</div>
+                <div><strong>🍪 Cookie:</strong> ${env.cookieEnabled ? '有効' : '無効'}</div>
+                <div><strong>🌍 言語:</strong> ${env.language}</div>
+                <div><strong>🔗 リファラー:</strong> ${env.referrer || 'なし'}</div>
+                <div><strong>📍 現在URL:</strong> ${env.url}</div>
+                <div style="margin-top:10px; font-size:11px; color:#666;"><strong>UserAgent:</strong><br>${env.userAgent}</div>
+            `;
+            
+            addLog(`環境検出完了: ${env.isLine ? 'LINE内蔵' : '通常'}ブラウザ`, 'info');
+            
+            return env;
+        }
+                // グローバル変数
         let fireCount = 0;
         let isReady = false;
         let currentEnvironment = null;<!DOCTYPE html>
@@ -449,10 +488,18 @@
             addLog('📋 システム初期化開始', 'info');
             
             try {
+                // 環境情報を取得
+                currentEnvironment = detectEnvironment();
+                displayEnvironment();
+                
                 // ボタンイベント設定
                 document.getElementById('fireBtn').onclick = handleFireClick;
                 document.getElementById('autoBtn').onclick = handleAutoTest;
                 document.getElementById('clearBtn').onclick = handleClearLog;
+                document.getElementById('envBtn').onclick = () => {
+                    displayEnvironment();
+                    addLog('🔍 環境情報を更新しました', 'info');
+                };
                 
                 addLog('🔗 イベントリスナー設定完了', 'success');
                 addLog('✨ システム準備完了', 'success');
@@ -468,6 +515,7 @@
                 
             } catch (error) {
                 addLog(`💥 初期化エラー: ${error.message}`, 'error');
+                addLog(`🔍 エラー詳細: ${error.stack || 'スタックなし'}`, 'error');
                 updateStatus('💥 初期化エラー', false);
             }
         }
