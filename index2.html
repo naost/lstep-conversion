@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+// グローバル変数
+        let fireCount = 0;
+        let isReady = false;
+        let currentEnvironment = null;<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -141,9 +144,45 @@
     <script>
         console.log("=== Lステップ スクリプト開始 ===");
         
-        // グローバル変数
-        let fireCount = 0;
-        let isReady = false;
+        // 環境情報を取得・表示
+        function detectEnvironment() {
+            const env = {
+                userAgent: navigator.userAgent,
+                isLine: navigator.userAgent.includes('Line'),
+                isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+                isAndroid: /Android/.test(navigator.userAgent),
+                isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+                isChrome: /Chrome/.test(navigator.userAgent),
+                cookieEnabled: navigator.cookieEnabled,
+                language: navigator.language,
+                platform: navigator.platform,
+                referrer: document.referrer,
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            };
+            
+            return env;
+        }
+        
+        // 環境情報を表示
+        function displayEnvironment() {
+            const env = detectEnvironment();
+            const envDiv = document.getElementById('envDetails');
+            
+            envDiv.innerHTML = `
+                <div><strong>🌐 ブラウザ:</strong> ${env.isLine ? 'LINE内蔵ブラウザ' : 'その他ブラウザ'}</div>
+                <div><strong>📱 プラットフォーム:</strong> ${env.isIOS ? 'iOS' : env.isAndroid ? 'Android' : 'その他'}</div>
+                <div><strong>🍪 Cookie:</strong> ${env.cookieEnabled ? '有効' : '無効'}</div>
+                <div><strong>🌍 言語:</strong> ${env.language}</div>
+                <div><strong>🔗 リファラー:</strong> ${env.referrer || 'なし'}</div>
+                <div><strong>📍 現在URL:</strong> ${env.url}</div>
+                <div style="margin-top:10px; font-size:11px; color:#666;"><strong>UserAgent:</strong><br>${env.userAgent}</div>
+            `;
+            
+            addLog(`環境検出完了: ${env.isLine ? 'LINE内蔵' : '通常'}ブラウザ`, 'info');
+            
+            return env;
+        }
         
         // ログ追加関数
         function addLog(message, type = 'info') {
@@ -199,28 +238,49 @@
                 attempt: attemptId,
                 count: fireCount,
                 test: 'storyblok',
-                ua: navigator.userAgent.includes('Line') ? 'line' : 'other',
-                method: 'img'
+                ua: currentEnvironment?.isLine ? 'line' : 'other',
+                platform: currentEnvironment?.isIOS ? 'ios' : currentEnvironment?.isAndroid ? 'android' : 'other',
+                method: 'img',
+                ref: document.referrer,
+                url: encodeURIComponent(window.location.href)
             });
             
-            img.src = `https://lstep.app/p/85292/q5ZrwS?${params}`;
+            const targetUrl = `https://lstep.app/p/85292/q5ZrwS?${params}`;
+            addLog(`📡 画像ピクセル送信: ${targetUrl.substring(0, 80)}...`, 'info');
             
+            img.src = targetUrl;
+            
+            // より詳細なイベントハンドリング
             img.onload = function() {
                 addLog(`✅ 画像ピクセル発火成功 (試行${fireCount})`, 'success');
+                addLog(`📊 成功URL: ${this.src.substring(0, 100)}...`, 'info');
                 updateStatus(`✅ 最後の発火成功: 試行${fireCount}`, true);
             };
             
-            img.onerror = function() {
+            img.onerror = function(e) {
                 addLog(`❌ 画像ピクセル発火失敗 (試行${fireCount})`, 'error');
+                addLog(`💥 エラー詳細: ${e.type || 'unknown error'}`, 'error');
+                addLog(`🔗 失敗URL: ${this.src.substring(0, 100)}...`, 'error');
             };
+            
+            img.onabort = function() {
+                addLog(`⚠️ 画像ピクセル発火中断 (試行${fireCount})`, 'warning');
+            };
+            
+            // タイムアウト検出
+            setTimeout(() => {
+                if (!img.complete && img.src) {
+                    addLog(`⏰ 画像ピクセル発火タイムアウト (10秒経過)`, 'warning');
+                }
+            }, 10000);
             
             document.getElementById('tracker').appendChild(img);
         }
         
-        // 方法2: Navigator.sendBeacon方式
+        // 方法2: Navigator.sendBeacon方式（詳細ログ付き）
         function fireWithBeacon(attemptId) {
             if (!navigator.sendBeacon) {
-                addLog('sendBeacon未対応', 'warning');
+                addLog('❌ sendBeacon未対応のブラウザです', 'warning');
                 return;
             }
             
@@ -229,27 +289,32 @@
                     t: Date.now(),
                     attempt: attemptId,
                     count: fireCount,
-                    method: 'beacon'
+                    method: 'beacon',
+                    ua: currentEnvironment?.isLine ? 'line' : 'other',
+                    platform: currentEnvironment?.isIOS ? 'ios' : currentEnvironment?.isAndroid ? 'android' : 'other'
                 });
                 
                 const url = `https://lstep.app/p/85292/q5ZrwS?${params}`;
+                addLog(`📡 sendBeacon送信開始: ${url.substring(0, 80)}...`, 'info');
+                
                 const sent = navigator.sendBeacon(url);
                 
                 if (sent) {
-                    addLog(`📡 sendBeacon発火送信完了 (${attemptId})`, 'success');
+                    addLog(`✅ sendBeacon発火送信完了 (${attemptId})`, 'success');
                 } else {
-                    addLog(`❌ sendBeacon発火失敗 (${attemptId})`, 'error');
+                    addLog(`❌ sendBeacon発火送信失敗 (${attemptId}) - ブラウザが拒否`, 'error');
                 }
                 
             } catch (error) {
-                addLog(`sendBeaconエラー: ${error.message}`, 'error');
+                addLog(`💥 sendBeaconエラー: ${error.message}`, 'error');
+                addLog(`🔍 エラー詳細: ${error.stack || 'スタックなし'}`, 'error');
             }
         }
         
-        // 方法3: Fetch with no-cors
+        // 方法3: Fetch with no-cors（詳細ログ付き）
         function fireWithFetchNoCors(attemptId) {
             if (typeof fetch === 'undefined') {
-                addLog('Fetch API未対応', 'warning');
+                addLog('❌ Fetch API未対応のブラウザです', 'warning');
                 return;
             }
             
@@ -258,24 +323,40 @@
                     t: Date.now(),
                     attempt: attemptId,
                     count: fireCount,
-                    method: 'fetch-nocors'
+                    method: 'fetch-nocors',
+                    ua: currentEnvironment?.isLine ? 'line' : 'other',
+                    platform: currentEnvironment?.isIOS ? 'ios' : currentEnvironment?.isAndroid ? 'android' : 'other'
                 });
                 
                 const url = `https://lstep.app/p/85292/q5ZrwS?${params}`;
+                addLog(`📡 Fetch(no-cors)送信開始: ${url.substring(0, 80)}...`, 'info');
                 
-                fetch(url, {
+                const fetchPromise = fetch(url, {
                     method: 'GET',
                     mode: 'no-cors',
                     cache: 'no-cache',
-                    credentials: 'omit'
-                }).then(() => {
-                    addLog(`🌐 Fetch(no-cors)発火送信完了 (${attemptId})`, 'success');
-                }).catch(error => {
-                    addLog(`Fetch(no-cors)エラー: ${error.message}`, 'error');
+                    credentials: 'omit',
+                    headers: {
+                        'User-Agent': navigator.userAgent
+                    }
                 });
                 
+                fetchPromise.then((response) => {
+                    addLog(`✅ Fetch(no-cors)発火送信完了 (${attemptId})`, 'success');
+                    addLog(`📊 レスポンス: ${response.status || 'opaque'}, ${response.type || 'unknown'}`, 'info');
+                }).catch(error => {
+                    addLog(`❌ Fetch(no-cors)エラー: ${error.message}`, 'error');
+                    addLog(`🔍 エラー詳細: ${error.stack || 'スタックなし'}`, 'error');
+                });
+                
+                // タイムアウト検出
+                setTimeout(() => {
+                    addLog(`⏰ Fetch(no-cors)タイムアウトチェック (10秒経過)`, 'info');
+                }, 10000);
+                
             } catch (error) {
-                addLog(`Fetchエラー: ${error.message}`, 'error');
+                addLog(`💥 Fetchエラー: ${error.message}`, 'error');
+                addLog(`🔍 エラー詳細: ${error.stack || 'スタックなし'}`, 'error');
             }
         }
         
