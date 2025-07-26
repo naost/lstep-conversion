@@ -1,46 +1,4 @@
-// 環境情報を取得・表示
-        function detectEnvironment() {
-            const env = {
-                userAgent: navigator.userAgent,
-                isLine: navigator.userAgent.includes('Line'),
-                isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-                isAndroid: /Android/.test(navigator.userAgent),
-                isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
-                isChrome: /Chrome/.test(navigator.userAgent),
-                cookieEnabled: navigator.cookieEnabled,
-                language: navigator.language,
-                platform: navigator.platform,
-                referrer: document.referrer,
-                url: window.location.href,
-                timestamp: new Date().toISOString()
-            };
-            
-            return env;
-        }
-        
-        // 環境情報を表示
-        function displayEnvironment() {
-            const env = detectEnvironment();
-            const envDiv = document.getElementById('envDetails');
-            
-            envDiv.innerHTML = `
-                <div><strong>🌐 ブラウザ:</strong> ${env.isLine ? 'LINE内蔵ブラウザ' : 'その他ブラウザ'}</div>
-                <div><strong>📱 プラットフォーム:</strong> ${env.isIOS ? 'iOS' : env.isAndroid ? 'Android' : 'その他'}</div>
-                <div><strong>🍪 Cookie:</strong> ${env.cookieEnabled ? '有効' : '無効'}</div>
-                <div><strong>🌍 言語:</strong> ${env.language}</div>
-                <div><strong>🔗 リファラー:</strong> ${env.referrer || 'なし'}</div>
-                <div><strong>📍 現在URL:</strong> ${env.url}</div>
-                <div style="margin-top:10px; font-size:11px; color:#666;"><strong>UserAgent:</strong><br>${env.userAgent}</div>
-            `;
-            
-            addLog(`環境検出完了: ${env.isLine ? 'LINE内蔵' : '通常'}ブラウザ`, 'info');
-            
-            return env;
-        }
-                // グローバル変数
-        let fireCount = 0;
-        let isReady = false;
-        let currentEnvironment = null;<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -148,6 +106,18 @@
             text-align: center;
             margin: 20px 0;
         }
+        .env-details {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .env-details div {
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -165,9 +135,16 @@
             <button id="autoBtn" class="btn btn-primary">
                 🔄 自動テスト実行
             </button>
+            <button id="envBtn" class="btn">
+                🔍 環境情報更新
+            </button>
             <button id="clearBtn" class="btn btn-danger">
                 🗑️ ログクリア
             </button>
+        </div>
+        
+        <div id="envDetails" class="env-details">
+            環境情報読み込み中...
         </div>
         
         <div class="log-container">
@@ -182,6 +159,11 @@
 
     <script>
         console.log("=== Lステップ スクリプト開始 ===");
+        
+        // グローバル変数
+        let fireCount = 0;
+        let isReady = false;
+        let currentEnvironment = null;
         
         // 環境情報を取得・表示
         function detectEnvironment() {
@@ -208,6 +190,11 @@
             const env = detectEnvironment();
             const envDiv = document.getElementById('envDetails');
             
+            if (!envDiv) {
+                addLog('❌ envDetails要素が見つかりません', 'error');
+                return env;
+            }
+            
             envDiv.innerHTML = `
                 <div><strong>🌐 ブラウザ:</strong> ${env.isLine ? 'LINE内蔵ブラウザ' : 'その他ブラウザ'}</div>
                 <div><strong>📱 プラットフォーム:</strong> ${env.isIOS ? 'iOS' : env.isAndroid ? 'Android' : 'その他'}</div>
@@ -227,6 +214,12 @@
         function addLog(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const logArea = document.getElementById('logArea');
+            
+            if (!logArea) {
+                console.log(`Lステップ[${type.toUpperCase()}]:`, message);
+                return;
+            }
+            
             const entry = document.createElement('div');
             entry.className = `log-entry log-${type}`;
             entry.textContent = `[${timestamp}] ${message}`;
@@ -239,6 +232,10 @@
         // ステータス更新
         function updateStatus(message, isSuccess = true) {
             const statusEl = document.getElementById('status');
+            if (!statusEl) {
+                addLog('❌ status要素が見つかりません', 'error');
+                return;
+            }
             statusEl.textContent = message;
             statusEl.className = `status ${isSuccess ? 'status-success' : 'status-error'}`;
         }
@@ -313,7 +310,10 @@
                 }
             }, 10000);
             
-            document.getElementById('tracker').appendChild(img);
+            const tracker = document.getElementById('tracker');
+            if (tracker) {
+                tracker.appendChild(img);
+            }
         }
         
         // 方法2: Navigator.sendBeacon方式（詳細ログ付き）
@@ -439,6 +439,8 @@
         // 手動発火
         function handleFireClick() {
             const btn = document.getElementById('fireBtn');
+            if (!btn) return;
+            
             btn.disabled = true;
             btn.textContent = '🔄 発火中...';
             
@@ -455,6 +457,8 @@
         // 自動テスト
         function handleAutoTest() {
             const btn = document.getElementById('autoBtn');
+            if (!btn) return;
+            
             btn.disabled = true;
             btn.textContent = '🔄 実行中...';
             
@@ -478,7 +482,10 @@
         
         // ログクリア
         function handleClearLog() {
-            document.getElementById('logArea').innerHTML = 
+            const logArea = document.getElementById('logArea');
+            if (!logArea) return;
+            
+            logArea.innerHTML = 
                 '<div class="log-entry log-info">[クリア] ログをクリアしました</div>';
             addLog('ログクリア実行', 'success');
         }
@@ -493,13 +500,20 @@
                 displayEnvironment();
                 
                 // ボタンイベント設定
-                document.getElementById('fireBtn').onclick = handleFireClick;
-                document.getElementById('autoBtn').onclick = handleAutoTest;
-                document.getElementById('clearBtn').onclick = handleClearLog;
-                document.getElementById('envBtn').onclick = () => {
-                    displayEnvironment();
-                    addLog('🔍 環境情報を更新しました', 'info');
-                };
+                const fireBtn = document.getElementById('fireBtn');
+                const autoBtn = document.getElementById('autoBtn');
+                const clearBtn = document.getElementById('clearBtn');
+                const envBtn = document.getElementById('envBtn');
+                
+                if (fireBtn) fireBtn.onclick = handleFireClick;
+                if (autoBtn) autoBtn.onclick = handleAutoTest;
+                if (clearBtn) clearBtn.onclick = handleClearLog;
+                if (envBtn) {
+                    envBtn.onclick = () => {
+                        displayEnvironment();
+                        addLog('🔍 環境情報を更新しました', 'info');
+                    };
+                }
                 
                 addLog('🔗 イベントリスナー設定完了', 'success');
                 addLog('✨ システム準備完了', 'success');
